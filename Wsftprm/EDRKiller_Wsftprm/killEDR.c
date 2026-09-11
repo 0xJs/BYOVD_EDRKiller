@@ -21,7 +21,14 @@ const wchar_t* g_EDRNames[] = {
 	L"elastic-endpoint.exe",    // Elastic Endpoint Security (EDR component)
 	L"filebeat.exe",            // Collects and ships log files
 	L"metricbeat.exe",          // Collects system and service metrics
-	L"winlogbeat.exe"			// Collects Windows Event Logs
+	L"winlogbeat.exe",			// Collects Windows Event Logs
+	
+	//CORTEX EDR
+	L"xdrhealth.exe",           // the Startup Programs entry lists Cortex XDR Health Helper as xdrhealth.exe
+	L"tlaworker.exe",           //listed as a background process that is always running under the Traps install path
+	L"cytray.exe",              //cytray.exe also listed as a background process that is always running
+	L"cyserver.exe",            //
+	L"cortex-xdr-payload.exe"   //described as the Cortex XDR Reporting Service in its file metadata
 };
 
 //// Just kill msedge for testing
